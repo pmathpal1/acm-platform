@@ -1,0 +1,3 @@
+---
+expected_manager_count: 3
+expected_min_worker_count: 1

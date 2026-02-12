@@ -1,0 +1,22 @@
+postgres_databases:
+  - name: myappdb
+  - name: analyticsdb
+
+postgres_users:
+  - name: pankaj
+    password: "{{ vault_pankaj_postgres_password }}"
+    db: postgres
+    privs: "ALL"
+    role_attr_flags: "SUPERUSER"
+
+  - name: rohit_app
+    password: "{{ vault_rohit_password }}"
+    db: myappdb
+    privs: "ALL"
+
+  - name: analytics_user
+    password: "{{ vault_analytics_password }}"
+    db: analyticsdb
+    privs: "CONNECT"
+
+

@@ -1,0 +1,28 @@
+---
+
+- name: Gather facts for swarm nodes
+  hosts: swarm_manager:frontend_worker
+  gather_facts: true
+  tasks: []
+
+
+- name: Initialize Swarm on leader
+  hosts: swarm_manager[0]
+  become: yes
+  roles:
+    - swarm_manager_init
+
+
+
+- name: Join additional managers to Swarm
+  hosts: swarm_manager[1:]
+  become: yes
+  roles:
+    - swarm_manager_join
+
+
+- name: Join workers to Swarm
+  hosts: frontend_worker
+  become: yes
+  roles:
+    - swarm_worker_join

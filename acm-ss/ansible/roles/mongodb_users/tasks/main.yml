@@ -1,0 +1,31 @@
+---
+- name: Ensure MongoDB is reachable
+  command: mongosh --quiet --eval "db.adminCommand('ping')"
+  register: mongo_ping
+  retries: 10
+  delay: 3
+  until: mongo_ping.rc == 0
+  changed_when: false
+
+
+- name: Create MongoDB users with authentication
+  command: >
+    mongosh
+    --username "{{ mongodb_admin_user }}"
+    --password "{{ mongodb_admin_password }}"
+    --authenticationDatabase admin
+    --quiet
+    --eval '
+      db = db.getSiblingDB("{{ item.db }}");
+      if (!db.getUser("{{ item.name }}")) {
+        db.createUser({
+          user: "{{ item.name }}",
+          pwd: "{{ item.password }}",
+          roles: {{ item.roles | to_json }}
+        });
+      }
+    '
+  loop: "{{ mongodb_users }}"
+  changed_when: false
+  no_log: true
+

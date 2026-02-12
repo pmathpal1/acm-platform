@@ -1,0 +1,62 @@
+- name: Define leader node
+  set_fact:
+    leader: "{{ groups['swarm_manager'][0] }}"
+
+- name: Skip leader
+  meta: end_host
+  when: inventory_hostname == leader
+
+
+# ---------------------------------------------------
+# Check current swarm state
+# ---------------------------------------------------
+- name: Get swarm state
+  shell: docker info --format '{{ "{{" }} .Swarm.LocalNodeState {{ "}}" }}'
+  register: swarm_state
+  changed_when: false
+  failed_when: false
+
+
+# ---------------------------------------------------
+# Leave any old swarm (safety for reprovisioned VMs)
+# ---------------------------------------------------
+- name: Leave old swarm if exists
+  shell: docker swarm leave --force || true
+  when: swarm_state.stdout != "inactive"
+
+
+# ---------------------------------------------------
+# Restart docker to ensure clean state
+# ---------------------------------------------------
+- name: Restart docker
+  service:
+    name: docker
+    state: restarted
+
+
+# ---------------------------------------------------
+# Get manager join token from leader
+# ---------------------------------------------------
+- name: Get manager token
+  shell: docker swarm join-token -q manager
+  delegate_to: "{{ leader }}"
+  run_once: true
+  register: manager_token
+
+
+# ---------------------------------------------------
+# Resolve leader private IP from gathered facts
+# Works with Terraform dynamic inventory
+# ---------------------------------------------------
+- name: Get leader IP
+  set_fact:
+    leader_ip: "{{ hostvars[groups['swarm_manager'][0]].ansible_default_ipv4.address }}"
+
+
+
+# ---------------------------------------------------
+# Join node as manager
+# ---------------------------------------------------
+- name: Join as manager
+  shell: docker swarm join --token {{ manager_token.stdout }} {{ leader_ip }}:2377
+  when: swarm_state.stdout == "inactive"

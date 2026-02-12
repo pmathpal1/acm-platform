@@ -1,0 +1,19 @@
+- name: Install PostgreSQL packages
+  apt:
+    name:
+      - postgresql
+      - postgresql-contrib
+      - python3-psycopg2
+    state: present
+    update_cache: yes
+
+- name: Ensure PostgreSQL service is enabled and started
+  service:
+    name: postgresql
+    enabled: yes
+    state: started
+
+- name: Wait for PostgreSQL to be ready
+  wait_for:
+    port: 5432
+    timeout: 30

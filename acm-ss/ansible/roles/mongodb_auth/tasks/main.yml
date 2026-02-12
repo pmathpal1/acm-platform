@@ -1,0 +1,26 @@
+---
+- name: Set MongoDB bind IP to default IPv4
+  set_fact:
+    mongo_private_ip: "{{ ansible_default_ipv4.address }}"
+
+- name: Fail if default IPv4 not detected
+  fail:
+    msg: "Default IPv4 address could not be detected on host."
+  when: mongo_private_ip is not defined
+
+
+- name: Deploy mongod.conf from template
+  template:
+    src: mongod.conf.j2
+    dest: /etc/mongod.conf
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Restart MongoDB
+
+
+- name: Ensure MongoDB service is running
+  systemd:
+    name: mongod
+    state: started
+    enabled: yes

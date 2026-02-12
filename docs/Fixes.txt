@@ -1,0 +1,271 @@
+# PostgreSQL Infrastructure Automation – End-to-End DevOps Journey
+
+## 1. Goal
+
+Automate a **production-style PostgreSQL deployment** using:
+
+* Terraform → Infrastructure provisioning
+* Dynamic Ansible inventory → Host discovery + variables
+* Ansible roles → Install, configure, secure PostgreSQL
+* VPC-restricted connectivity → Secure DB access from frontend only
+
+---
+
+## 2. Initial Architecture
+
+```
+Terraform
+ ├── VPC network
+ ├── Firewalls
+ ├── Droplets (frontend, DB, etc.)
+ └── Outputs (public IPs)
+
+Ansible
+ ├── Dynamic inventory (reads Terraform)
+ ├── Roles
+ │   ├── postgres_install
+ │   ├── postgres_config
+ │   └── postgres_db_users
+ └── Playbook → postgres.yml
+```
+
+---
+
+## 3. Major Problems Faced
+
+### Problem 1 — PostgreSQL reachable only on localhost
+
+**Symptom**
+
+```
+connection refused on private IP
+```
+
+**Root cause**
+
+```
+listen_addresses still set to 'localhost'
+```
+
+**Fix**
+
+Automated via Ansible:
+
+```
+listen_addresses = '*'
+```
+
+Restarted PostgreSQL.
+
+---
+
+### Problem 2 — pg_hba.conf blocking frontend
+
+**Symptom**
+
+```
+no pg_hba.conf entry for host "10.x.x.x"
+```
+
+**Root cause**
+
+```
+CIDR hard-coded and incorrect
+```
+
+Originally:
+
+```
+frontend_cidr: 10.10.0.0/16
+```
+
+Actual VPC:
+
+```
+10.30.0.0/16
+```
+
+---
+
+### Problem 3 — Hard-coding CIDR is NOT production-safe
+
+**Insight**
+
+Droplets & environments can change →
+CIDR must come from **Terraform**, not Ansible.
+
+---
+
+## 4. Terraform Fix
+
+### Step 1 — Expose VPC CIDR inside network module
+
+```
+output "vpc_cidr" {
+  value = digitalocean_vpc.main.ip_range
+}
+```
+
+### Step 2 — Re-export in environment outputs
+
+```
+output "vpc_cidr" {
+  value = module.network.vpc_cidr
+}
+```
+
+### Result
+
+```
+terraform output vpc_cidr → 10.30.0.0/16
+```
+
+---
+
+## 5. Dynamic Inventory Fix
+
+### Issue
+
+Ansible still reading **old CIDR** from `group_vars`.
+
+### Fixes
+
+#### 1. Remove hard-coded CIDR
+
+Deleted from:
+
+```
+group_vars/postgres_db.yml
+```
+
+#### 2. Pass CIDR dynamically from Terraform
+
+Added to `terraform_inventory.py`:
+
+```
+inventory["all"]["vars"]["frontend_cidr"] =
+    tf_outputs["vpc_cidr"]["value"]
+```
+
+### Result
+
+```
+Ansible variable → frontend_cidr = 10.30.0.0/16
+```
+
+---
+
+## 6. pg_hba.conf Not Updating
+
+### Symptom
+
+Old rule remained:
+
+```
+10.10.0.0/16
+```
+
+### Root Cause
+
+`lineinfile` regexp matched **exact CIDR**,
+so replacement never triggered.
+
+### Fix
+
+Use generic regexp:
+
+```
+^host\s+all\s+all\s+.*scram-sha-256$
+```
+
+Now Ansible **replaces any old rule** safely.
+
+---
+
+## 7. Final Verification Steps
+
+### 1. Re-run PostgreSQL playbook
+
+```
+ansible-playbook postgres.yml
+```
+
+### 2. Confirm pg_hba update
+
+```
+grep 10.30 pg_hba.conf
+```
+
+### 3. Test from frontend
+
+```
+psql -h <POSTGRES_PRIVATE_IP> -U pankaj -d postgres
+```
+
+---
+
+## 8. Final Result
+
+Successful login:
+
+```
+postgres=#
+```
+
+---
+
+## 9. Production-Level Achievements
+
+✔ Terraform-driven networking
+✔ Dynamic Ansible inventory
+✔ No hard-coded infrastructure values
+✔ Secure pg_hba based on VPC CIDR
+✔ Automated DB users & permissions
+✔ End-to-end frontend → DB connectivity
+
+---
+
+## 10. Key DevOps Learnings
+
+### 1. Never hard-code infrastructure data
+
+Always read from **Terraform outputs**.
+
+### 2. Separate responsibilities
+
+```
+Terraform → infrastructure truth
+Ansible   → configuration & security
+```
+
+### 3. Debugging order matters
+
+```
+Network → Firewall → Service → Auth → Automation
+```
+
+### 4. Idempotent configuration is critical
+
+Regex-based replacement prevents drift.
+
+---
+
+## 11. Final Architecture (Production-Grade)
+
+```
+Terraform
+   ↓
+Dynamic Inventory
+   ↓
+Ansible Roles
+   ↓
+Secure PostgreSQL
+   ↓
+Frontend Application Connectivity
+```
+
+---
+
+## 12. Status
+
+**Project complete and production-ready.**

@@ -1,0 +1,44 @@
+- name: Define leader node
+  set_fact:
+    leader: "{{ groups['swarm_manager'][0] }}"
+
+
+
+- name: Get swarm state
+  shell: docker info --format '{{ "{{" }} .Swarm.LocalNodeState {{ "}}" }}'
+  register: swarm_state
+  changed_when: false
+  failed_when: false
+
+
+
+- name: Leave old swarm if exists
+  shell: docker swarm leave --force || true
+  when: swarm_state.stdout != "inactive"
+
+
+- name: Restart docker
+  service:
+    name: docker
+    state: restarted
+
+
+
+- name: Get worker token
+  shell: docker swarm join-token -q worker
+  delegate_to: "{{ leader }}"
+  run_once: true
+  register: worker_token
+
+
+
+- name: Get leader IP
+  set_fact:
+    leader_ip: "{{ hostvars[groups['swarm_manager'][0]].ansible_default_ipv4.address }}"
+
+
+
+
+- name: Join as worker
+  shell: docker swarm join --token {{ worker_token.stdout }} {{ leader_ip }}:2377
+  when: swarm_state.stdout == "inactive"

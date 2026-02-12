@@ -1,0 +1,13 @@
+
+---
+
+ansible_ssh_private_key_file: /Users/pankajmathpal/.ssh/id_ed25519
+
+ansible_user: root
+
+expected_manager_count: 3
+expected_min_worker_count: 1
+
+swarm_iface_prefix: "^10\\.10\\."
+
+

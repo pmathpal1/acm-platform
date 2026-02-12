@@ -1,0 +1,14 @@
+---
+- name: Provision and secure MongoDB
+  hosts: mongo_db
+  become: true
+  gather_facts: true
+
+  vars_files:
+    - ../group_vars/mongo_db.yml
+    - ../group_vars/vault.yml
+
+  roles:
+    - mongodb
+    - mongodb_users
+    - mongodb_auth

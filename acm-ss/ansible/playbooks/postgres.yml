@@ -1,0 +1,14 @@
+---
+- name: Setup PostgreSQL server
+  hosts: postgres_db
+  become: true
+  gather_facts: true
+
+  vars_files:
+    - ../group_vars/postgres_db.yml
+    - ../group_vars/vault.yml
+
+  roles:
+    - postgres_install
+    - postgres_config
+    - postgres_db_users

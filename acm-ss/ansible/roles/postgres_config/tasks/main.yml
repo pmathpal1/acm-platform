@@ -1,0 +1,52 @@
+---
+
+
+- name: Find PostgreSQL config directory
+  shell: |
+    dirname $(find /etc/postgresql -name postgresql.conf | head -n 1)
+  register: pg_conf_dir
+  changed_when: false
+
+- name: Set PostgreSQL config path facts
+  set_fact:
+    postgres_conf_path: "{{ pg_conf_dir.stdout }}/postgresql.conf"
+    postgres_hba_path: "{{ pg_conf_dir.stdout }}/pg_hba.conf"
+
+
+
+- name: Configure PostgreSQL to listen on all interfaces (protected by firewall)
+  lineinfile:
+    path: "{{ postgres_conf_path }}"
+    regexp: '^#?listen_addresses'
+    line: "listen_addresses = '*'"
+    backup: yes
+
+
+
+- name: Ensure local connections require password authentication
+  lineinfile:
+    path: "{{ postgres_hba_path }}"
+    regexp: '^local\s+all\s+all\s+'
+    line: "local   all   all   scram-sha-256"
+    backup: yes
+
+- name: Allow frontend network access with secure authentication
+  lineinfile:
+    path: "{{ postgres_hba_path }}"
+    regexp: '^host\\s+all\\s+all\\s+.*scram-sha-256$'
+    line: "host    all    all    {{ frontend_cidr }}    scram-sha-256"
+    insertafter: EOF
+    backup: yes
+
+
+
+- name: Reload PostgreSQL to apply configuration changes
+  service:
+    name: postgresql
+    state: restarted
+
+- name: Wait for PostgreSQL to be ready after reload
+  wait_for:
+    port: 5432
+    timeout: 30
+

@@ -1,0 +1,53 @@
+---
+- name: Define leader node
+  set_fact:
+    leader: "{{ groups['swarm_manager'][0] }}"
+
+- name: Skip non-leader nodes
+  meta: end_host
+  when: inventory_hostname != leader
+
+
+
+- name: Get swarm node list
+  shell: docker node ls --format '{{ "{{" }} .Hostname {{ "}}" }} {{ "{{" }} .Status {{ "}}" }} {{ "{{" }} .ManagerStatus {{ "}}" }}'
+  register: swarm_nodes
+  changed_when: false
+
+
+- name: Count manager nodes
+  set_fact:
+    manager_count: "{{ (swarm_nodes.stdout_lines | select('search', 'Leader|Reachable') | list | length) | int }}"
+
+- name: Count worker nodes
+  set_fact:
+    worker_count: "{{ (swarm_nodes.stdout_lines | reject('search', 'Leader|Reachable') | list | length) | int }}"
+
+- name: Check all nodes are Ready
+  set_fact:
+    not_ready_nodes: "{{ swarm_nodes.stdout_lines | reject('search', 'Ready') | list }}"
+
+
+- name: Fail if managers count is incorrect
+  fail:
+    msg: "Swarm validation failed: Expected {{ expected_manager_count }} managers, found {{ manager_count }}"
+  when: (manager_count | int) != (expected_manager_count | int)
+
+- name: Fail if worker count below minimum
+  fail:
+    msg: "Swarm validation failed: Expected at least {{ expected_min_worker_count }} workers, found {{ worker_count }}"
+  when: (worker_count | int) < (expected_min_worker_count | int)
+
+- name: Fail if any node not Ready
+  fail:
+    msg: "Swarm validation failed: Some nodes are not Ready → {{ not_ready_nodes }}"
+  when: not_ready_nodes | length > 0
+
+
+- name: Swarm cluster is healthy
+  debug:
+    msg: >
+      Swarm validation successful.
+      Managers={{ manager_count }},
+      Workers={{ worker_count }},
+      All nodes Ready.

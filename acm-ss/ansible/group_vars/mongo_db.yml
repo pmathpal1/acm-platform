@@ -1,0 +1,21 @@
+mongodb_admin_user: pankaj
+mongodb_admin_password: "{{ vault_pankaj_mongo_password }}"
+
+mongodb_users:
+  - name: pankaj
+    password: "{{ vault_pankaj_mongo_password }}"
+    db: admin
+    roles:
+      - { role: root, db: admin }
+
+  - name: rohit_app
+    password: "{{ vault_rohit_mongo_password }}"
+    db: myappdb
+    roles:
+      - { role: dbOwner, db: myappdb }
+
+  - name: analytics_user
+    password: "{{ vault_analytics_mongo_password }}"
+    db: analyticsdb
+    roles:
+      - { role: read, db: analyticsdb }

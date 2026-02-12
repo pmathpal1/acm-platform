@@ -1,0 +1,29 @@
+---
+- name: Set manager advertise IP (robust method)
+  set_fact:
+    manager_private_ip: "{{ ansible_default_ipv4.address }}"
+  when: inventory_hostname == groups['swarm_manager'][0]
+
+
+- name: Wait for Docker socket
+  wait_for:
+    path: /var/run/docker.sock
+    timeout: 30
+  when: inventory_hostname == groups['swarm_manager'][0]
+
+
+- name: Check swarm state on leader
+  shell: docker info --format '{{ "{{" }} .Swarm.LocalNodeState {{ "}}" }}'
+  register: swarm_state
+  changed_when: false
+  failed_when: false
+  when: inventory_hostname == groups['swarm_manager'][0]
+
+
+- name: Initialize swarm (only if inactive)
+  shell: docker swarm init --advertise-addr {{ manager_private_ip }}
+  when:
+    - inventory_hostname == groups['swarm_manager'][0]
+    - swarm_state.stdout == "inactive"
+  register: swarm_init
+  changed_when: "'Swarm initialized' in swarm_init.stdout"
