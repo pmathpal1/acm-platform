@@ -3,6 +3,7 @@ pipeline {
 
     environment {
         TF_IN_AUTOMATION = "true"
+        TF_VAR_do_token = credentials('do-token')
     }
 
     stages {
@@ -36,4 +37,3 @@ pipeline {
         }
     }
 }
-
