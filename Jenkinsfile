@@ -37,3 +37,23 @@ pipeline {
         }
     }
 }
+
+stage('Approval for Apply') {
+    when {
+        branch 'main'
+    }
+    steps {
+        input message: 'Approve Terraform APPLY to production?'
+    }
+}
+
+stage('Terraform Apply') {
+    when {
+        branch 'main'
+    }
+    steps {
+        dir('acm-ss/terraform/envs/dev') {
+            sh 'terraform apply -auto-approve'
+        }
+    }
+}
