@@ -5,10 +5,9 @@ pipeline {
         githubPush()
     }
 
-
     environment {
         TF_IN_AUTOMATION = "true"
-        TF_VAR_do_token = credentials('do-token')
+        TF_VAR_do_token  = credentials('do-token')
     }
 
     stages {
@@ -16,12 +15,6 @@ pipeline {
         stage('Checkout') {
             steps {
                 checkout scm
-            }
-        }
-
-        stage('Terraform Version') {
-            steps {
-                sh 'terraform --version'
             }
         }
 
@@ -40,30 +33,25 @@ pipeline {
                 }
             }
         }
-    }
-}
 
-stage('Approval for Apply') {
-    when {
-        branch 'main'
-    }
-    steps {
-        input message: 'Approve Terraform APPLY to production?'
-    }
-}
+        stage('Approval for Apply') {
+            when {
+                branch 'main'
+            }
+            steps {
+                input message: 'Approve Terraform APPLY to production?'
+            }
+        }
 
-stage('Terraform Apply') {
-    when {
-        branch 'main'
-    }
-    steps {
-        dir('acm-ss/terraform/envs/dev') {
-            sh 'terraform apply -auto-approve'
+        stage('Terraform Apply') {
+            when {
+                branch 'main'
+            }
+            steps {
+                dir('acm-ss/terraform/envs/dev') {
+                    sh 'terraform apply -auto-approve'
+                }
+            }
         }
     }
 }
-
-
-
-
-
