@@ -9,20 +9,22 @@ pipeline {
         TF_IN_AUTOMATION = "true"
         TF_VAR_do_token  = credentials('do-token')
     }
-    stage('Debug Branch') {
-    steps {
-        echo "BRANCH_NAME = ${env.BRANCH_NAME}"
-        sh 'git branch --show-current || true'
-    }
-}
-
+    
     stages {
 
-        stage('Checkout') {
-            steps {
-                checkout scm
-            }
+        stage('Debug Branch') {
+          steps {
+            echo "BRANCH_NAME = ${env.BRANCH_NAME}"
+            sh 'git branch --show-current || true'
         }
+    }
+
+         stage('Checkout') {
+          steps {
+            checkout scm
+        }
+    }
+
 
         stage('Terraform Init') {
             steps {
