@@ -38,19 +38,39 @@ mongo_image      = "ubuntu-22-04-x64"
 ####################################################################
 manager_count = 3
 #################################################################
-mysql_count    = 1
+mysql_count    = 0
 mongo_count    = 1
 postgres_count = 1
-redis_count    = 1
+redis_count    = 0
 #####################################################
+/*
 frontend_worker_names = [
   "trk",
   "ai",
   "dashboard"
 ]
+*/
 ######################################################
 project_do_name = "ACM-SS"
 ####################################################
 lb_protocol    = "http"
 lb_port        = 80
 lb_target_port = 80
+
+
+frontend_workers = {
+  trk = {
+    count = 1
+    size  = "s-1vcpu-1gb"
+  }
+
+  ai = {
+    count = 1
+    size  = "s-1vcpu-1gb"
+  }
+
+  dashboard = {
+    count = 1
+    size  = "s-1vcpu-1gb"
+  }
+}

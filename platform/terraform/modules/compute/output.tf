@@ -7,13 +7,22 @@ output "swarm_manager_public_ips" {
 }
 
 
-
+/*
 output "frontend_worker_public_ips" {
   description = "Public IPs of frontend worker nodes"
   value = [
     for d in values(digitalocean_droplet.frontend_workers) :
     d.ipv4_address
   ]
+}
+*/
+
+output "frontend_worker_public_ips" {
+  description = "Public IPs of frontend worker droplets"
+  value = {
+    for name, droplet in digitalocean_droplet.frontend_workers :
+    name => droplet.ipv4_address
+  }
 }
 
 

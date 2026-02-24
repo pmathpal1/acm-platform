@@ -66,11 +66,11 @@ variable "mongo_image" {
 variable "manager_count" {
   type = number
 }
-
+/*
 variable "frontend_worker_names" {
   type = list(string)
 }
-
+*/
 variable "mysql_count" {
   type = number
 }
@@ -105,3 +105,10 @@ variable "lb_target_port" {
   type = number
 }
 
+variable "frontend_workers" {
+  description = "Frontend worker groups with count and size"
+  type = map(object({
+    count = number
+    size  = string
+  }))
+}

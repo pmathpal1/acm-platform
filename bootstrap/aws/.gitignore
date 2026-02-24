@@ -1,0 +1,8 @@
+# Terraform state
+*.tfstate
+*.tfstate.*
+.terraform/
+
+# Terraform variable files
+terraform.tfvars
+*.tfvars

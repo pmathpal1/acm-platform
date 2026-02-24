@@ -38,8 +38,8 @@ module "compute" {
   manager_count = var.manager_count
 
   
-  frontend_worker_names = var.frontend_worker_names
-
+  #frontend_worker_names = var.frontend_worker_names
+frontend_workers = var.frontend_workers
   mysql_count    = var.mysql_count
   mongo_count    = var.mongo_count
   postgres_count = var.postgres_count
