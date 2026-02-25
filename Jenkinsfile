@@ -1,65 +1,97 @@
 pipeline {
-    agent { label 'jenkins-agent' }
-
-    triggers {
-        githubPush()
-    }
+    agent none
 
     environment {
-        TF_IN_AUTOMATION = "true"
-        TF_VAR_do_token  = credentials('do-token')
+        AWS_REGION   = 'ap-south-1'
+        ECR_REGISTRY = '774305613843.dkr.ecr.ap-south-1.amazonaws.com'
+        IMAGE_NAME   = 'terraform-jenkins-agent'
+        IMAGE_TAG    = '1.0.0'
+        TF_IN_AUTOMATION = 'true'
     }
-    
+
     stages {
 
-        stage('Debug Branch') {
-          steps {
-            echo "BRANCH_NAME = ${env.BRANCH_NAME}"
-            sh 'git branch --show-current || true'
-        }
-    }
-
-         stage('Checkout') {
-          steps {
-            checkout scm
-        }
-    }
-
-
-        stage('Terraform Init') {
+        stage('Checkout') {
+            agent any
             steps {
-                dir('acm-ss/terraform/envs/dev') {
-                    sh 'terraform init'
+                checkout scm
+            }
+        }
+
+        stage('Set Environment Context') {
+            agent any
+            steps {
+                script {
+                    if (env.BRANCH_NAME == 'dev') {
+                        env.TF_ENV = 'dev'
+                    } else if (env.BRANCH_NAME == 'stg') {
+                        env.TF_ENV = 'stg'
+                    } else if (env.BRANCH_NAME == 'main') {
+                        env.TF_ENV = 'prod'
+                    } else {
+                        error "Unsupported branch: ${env.BRANCH_NAME}"
+                    }
+
+                    echo "Terraform environment set to: ${env.TF_ENV}"
                 }
             }
         }
 
         stage('Terraform Plan') {
+            agent {
+                docker {
+                    image "${ECR_REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}"
+                    reuseNode true
+                }
+            }
             steps {
-                dir('acm-ss/terraform/envs/dev') {
-                    sh 'terraform plan'
+                withCredentials([
+                    [$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-ci-user'],
+                    string(credentialsId: 'do-token', variable: 'DO_TOKEN')
+                ]) {
+
+                    sh """
+                        export TF_VAR_do_token=${DO_TOKEN}
+                        cd acm-ss/terraform/envs/${TF_ENV}
+                        terraform init
+                        terraform plan
+                    """
                 }
             }
         }
 
-        stage('Approval for Apply') {
+        stage('Manual Approval (Prod Only)') {
             when {
                 branch 'main'
             }
             steps {
-                input message: 'Approve Terraform APPLY to production?'
+                input message: 'Approve Terraform APPLY to Production?'
             }
         }
 
-        stage('Terraform Apply') {
+        stage('Terraform Apply (Prod Only)') {
             when {
                 branch 'main'
             }
-            steps {
-                dir('acm-ss/terraform/envs/dev') {
-                    sh 'terraform apply -auto-approve'
+            agent {
+                docker {
+                    image "${ECR_REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}"
+                    reuseNode true
                 }
             }
-        }
+            steps {
+                withCredentials([
+                    [$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-ci-user'],
+                    string(credentialsId: 'do-token', variable: 'DO_TOKEN')
+                ]) {
+
+                    sh """
+                        export TF_VAR_do_token=${DO_TOKEN}
+                        cd acm-ss/terraform/envs/${TF_ENV}
+                        terraform apply -auto-approve
+                    """
+                }
+            }
+        }   
     }
 }
