@@ -5,7 +5,7 @@ pipeline {
         AWS_REGION   = 'ap-south-1'
         ECR_REGISTRY = '774305613843.dkr.ecr.ap-south-1.amazonaws.com'
         IMAGE_NAME   = 'terraform-jenkins-agent'
-        IMAGE_TAG    = '1.0.0'
+        IMAGE_TAG    = '1.0.1'
         TF_IN_AUTOMATION = 'true'
     }
 
