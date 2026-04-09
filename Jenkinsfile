@@ -9,7 +9,6 @@ pipeline {
         TF_IN_AUTOMATION = 'true'
     }
 
-    stages {
 
         stage('Checkout') {
             agent any
@@ -94,4 +93,3 @@ pipeline {
             }
         }   
     }
-}
